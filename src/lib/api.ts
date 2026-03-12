@@ -1,5 +1,13 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3001/api').replace(/\/$/, '');
 const BASE_URL = API_URL.replace('/api', '');
+
+// Default fetch options for better compatibility
+const fetchOptions = {
+  headers: {
+    'Accept': 'application/json',
+    'X-Requested-With': 'XMLHttpRequest' // Helps bypass some CSRF/WAF filters
+  }
+};
 
 export { API_URL, BASE_URL };
 
@@ -33,7 +41,10 @@ export const authAPI = {
   async login(username: string, password: string): Promise<LoginResponse> {
     const response = await fetch(`${API_URL}/auth/login`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        ...fetchOptions.headers,
+        'Content-Type': 'application/json'
+      },
       body: JSON.stringify({ username, password })
     });
 
@@ -48,7 +59,10 @@ export const authAPI = {
   async register(username: string, email: string, password: string, role: string = 'user') {
     const response = await fetch(`${API_URL}/auth/register`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        ...fetchOptions.headers,
+        'Content-Type': 'application/json'
+      },
       body: JSON.stringify({ username, email, password, role })
     });
 
@@ -64,27 +78,36 @@ export const authAPI = {
 // Stations API
 export const stationsAPI = {
   async getAll(): Promise<Station[]> {
-    const response = await fetch(`${API_URL}/stations`);
+    const response = await fetch(`${API_URL}/stations`, {
+      ...fetchOptions
+    });
     if (!response.ok) throw new Error('Failed to fetch stations');
     return response.json();
   },
 
   async getAllAdmin(token: string): Promise<Station[]> {
     const response = await fetch(`${API_URL}/stations/all`, {
-      headers: { 'Authorization': `Bearer ${token}` }
+      headers: {
+        ...fetchOptions.headers,
+        'Authorization': `Bearer ${token}`
+      }
     });
     if (!response.ok) throw new Error('Failed to fetch stations');
     return response.json();
   },
 
   async getById(id: number): Promise<Station> {
-    const response = await fetch(`${API_URL}/stations/${id}`);
+    const response = await fetch(`${API_URL}/stations/${id}`, {
+      ...fetchOptions
+    });
     if (!response.ok) throw new Error('Station not found');
     return response.json();
   },
 
   async getBySlug(slug: string): Promise<Station> {
-    const response = await fetch(`${API_URL}/stations/slug/${slug}`);
+    const response = await fetch(`${API_URL}/stations/slug/${slug}`, {
+      ...fetchOptions
+    });
     if (!response.ok) throw new Error('Station not found');
     return response.json();
   },
@@ -93,6 +116,7 @@ export const stationsAPI = {
     const response = await fetch(`${API_URL}/stations`, {
       method: 'POST',
       headers: {
+        ...fetchOptions.headers,
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
@@ -111,6 +135,7 @@ export const stationsAPI = {
     const response = await fetch(`${API_URL}/stations/${id}`, {
       method: 'PUT',
       headers: {
+        ...fetchOptions.headers,
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
@@ -128,7 +153,10 @@ export const stationsAPI = {
   async delete(token: string, id: number) {
     const response = await fetch(`${API_URL}/stations/${id}`, {
       method: 'DELETE',
-      headers: { 'Authorization': `Bearer ${token}` }
+      headers: {
+        ...fetchOptions.headers,
+        'Authorization': `Bearer ${token}`
+      }
     });
 
     if (!response.ok) {
