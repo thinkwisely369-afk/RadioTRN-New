@@ -1,0 +1,220 @@
+import { useParams, Link } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
+import { ArrowLeft, Share2, Play, Pause } from "lucide-react";
+import Header from "@/components/Header";
+import Footer from "@/components/Footer";
+import StationCard from "@/components/StationCard";
+import { getStationById, stations } from "@/data/stations";
+import { useAudio } from "@/contexts/AudioContext";
+import { toast } from "@/hooks/use-toast";
+
+const StationPage = () => {
+  const { id } = useParams<{ id: string }>();
+  const station = getStationById(id || "");
+  const { currentStation, isPlaying, playStation, togglePlay } = useAudio();
+
+  if (!station) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-foreground mb-4">Station not found</h1>
+          <Link to="/" className="text-primary hover:underline">
+            Go back home
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  const isCurrentStation = currentStation?.id === station.id;
+  const isThisPlaying = isCurrentStation && isPlaying;
+  const otherStations = stations.filter(s => s.id !== station.id).slice(0, 4);
+
+  const handlePlayClick = () => {
+    if (isCurrentStation) {
+      togglePlay();
+    } else {
+      playStation(station);
+    }
+  };
+
+  const handleShare = async () => {
+    const url = window.location.href;
+    if (navigator.share) {
+      await navigator.share({
+        title: `${station.name} - The Radio Network`,
+        text: `Listen to ${station.name} on The Radio Network`,
+        url,
+      });
+    } else {
+      await navigator.clipboard.writeText(url);
+      toast({
+        title: "Link copied!",
+        description: "Station link has been copied to your clipboard.",
+      });
+    }
+  };
+
+  return (
+    <>
+      <Helmet>
+        <title>{station.name} - The Radio Network | {station.genre} Radio</title>
+        <meta name="description" content={`Stream ${station.name} live on The Radio Network. ${station.tagline}. Free ${station.genre} music streaming 24/7.`} />
+        <meta name="keywords" content={`${station.name}, ${station.genre} radio, online radio, streaming music, The Radio Network`} />
+        <link rel="canonical" href={`https://theradionetwork.com/station/${station.id}`} />
+      </Helmet>
+
+      <div className="min-h-screen bg-background pb-24">
+        <Header />
+
+        {/* Hero with gradient */}
+        <section
+          className="pt-24 pb-12 md:pt-32 md:pb-16"
+          style={{
+            background: `linear-gradient(180deg, hsl(${station.color} / 0.2) 0%, hsl(var(--background)) 100%)`,
+          }}
+        >
+          <div className="container mx-auto px-4">
+            <Link
+              to="/"
+              className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-8"
+            >
+              <ArrowLeft size={20} />
+              Back to All Stations
+            </Link>
+
+            <div className="flex flex-col md:flex-row md:items-start gap-8">
+              {/* Station Visual */}
+              <div
+                className="w-full md:w-72 aspect-square rounded-2xl overflow-hidden relative"
+                style={{
+                  background: `linear-gradient(135deg, hsl(${station.color} / 0.8) 0%, hsl(${station.color} / 0.4) 100%)`,
+                  boxShadow: `0 20px 60px hsl(${station.color} / 0.3)`,
+                }}
+              >
+                <div className="absolute inset-0 flex items-center justify-center">
+                  {isThisPlaying ? (
+                    <div className="flex items-end gap-1 h-24">
+                      {[...Array(7)].map((_, i) => (
+                        <div
+                          key={i}
+                          className="w-3 bg-foreground/90 rounded-full animate-equalizer"
+                          style={{
+                            height: "100%",
+                            animationDelay: `${i * 0.1}s`,
+                          }}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex items-end gap-1 h-24 opacity-50">
+                      {[...Array(7)].map((_, i) => (
+                        <div
+                          key={i}
+                          className="w-3 bg-foreground/90 rounded-full"
+                          style={{ height: `${30 + (i % 3) * 25}%` }}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Station Info */}
+              <div className="flex-1">
+                <span
+                  className="inline-block px-3 py-1 rounded-full text-sm font-medium mb-4"
+                  style={{
+                    background: `hsl(${station.color} / 0.2)`,
+                    color: `hsl(${station.color})`,
+                  }}
+                >
+                  {station.genre}
+                </span>
+                <h1 className="font-display text-4xl md:text-5xl font-bold text-foreground mb-2">
+                  {station.name}
+                </h1>
+                <p className="text-xl text-muted-foreground mb-6">{station.tagline}</p>
+
+                <div className="flex items-center gap-4 flex-wrap">
+                  <button
+                    onClick={handlePlayClick}
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-full font-semibold transition-all duration-300 hover:scale-105"
+                    style={{
+                      background: `hsl(${station.color})`,
+                      color: 'hsl(var(--background))',
+                      boxShadow: isThisPlaying ? `0 0 30px hsl(${station.color} / 0.5)` : 'none',
+                    }}
+                  >
+                    {isThisPlaying ? (
+                      <>
+                        <Pause className="w-5 h-5 fill-current" />
+                        Pause
+                      </>
+                    ) : (
+                      <>
+                        <Play className="w-5 h-5 fill-current ml-0.5" />
+                        Play Now
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={handleShare}
+                    className="inline-flex items-center gap-2 px-4 py-3 rounded-full text-muted-foreground hover:text-foreground border border-border hover:border-foreground/30 transition-colors"
+                  >
+                    <Share2 size={18} />
+                    Share
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Station Description */}
+        <section className="py-12">
+          <div className="container mx-auto px-4">
+            <div className="max-w-3xl">
+              <h2 className="font-display text-2xl font-bold text-foreground mb-4">
+                About {station.name}
+              </h2>
+              <p className="text-muted-foreground leading-relaxed">
+                Tune in to {station.name} for the best {station.genre.toLowerCase()} music streaming 24/7. 
+                Whether you're starting your day, working, or winding down, 
+                {station.name} delivers the perfect soundtrack with carefully curated tracks 
+                and non-stop entertainment. {station.tagline}.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* Other Stations */}
+        <section className="py-12 bg-card">
+          <div className="container mx-auto px-4">
+            <h2 className="font-display text-2xl font-bold text-foreground mb-8">
+              Explore More Stations
+            </h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+              {otherStations.map((s, index) => (
+                <StationCard key={s.id} station={s} index={index} />
+              ))}
+            </div>
+            <div className="text-center mt-8">
+              <Link
+                to="/#stations"
+                className="inline-flex items-center gap-2 text-primary hover:text-primary/80 font-medium transition-colors"
+              >
+                View All Stations
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        <Footer />
+      </div>
+    </>
+  );
+};
+
+export default StationPage;
