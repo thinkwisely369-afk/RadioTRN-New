@@ -15,6 +15,7 @@ This document tracks the technical details and procedures for maintaining the Ra
 - **Password:** `S9vVp9wnfcyxGNAyBPN9`
 - **API Port:** `35001`
 - **Website:** `https://radiotrn.com`
+- **GitHub Repo:** `https://github.com/thinkwisely369-afk/RadioTRN-New.git`
 
 ## 📂 Key Directories (Remote)
 
@@ -35,6 +36,11 @@ The backend runs using PM2. If the site shows "Failed to load stations" or a 503
 - **Missing Dependencies:** If the server crashes with "Module not found", run `npm install` in `/home/radiotrn/api`.
 - **Database Connection:** Use `127.0.0.1` instead of `localhost` in the `.env` file for reliable local database access.
 - **Static Assets:** The `uploads` directory is served relative to the process root. Ensure `Serving uploads from: /home/radiotrn/api/uploads` appears in logs.
+- **iOS/WebKit 403 & Database Loading (Resolved):** 
+  - Strict CORS: iOS/WebKit requires dynamic origin validation when `credentials: true`.
+  - CSP Restrictions: Added `connect-src: "*"` and standard media/blob sources in `helmet` to support cross-origin audio processing.
+  - Security Filters: Added `X-Requested-With: XMLHttpRequest` header to all frontend fetch calls to bypass WAF/ModSecurity filters that often block iOS/Safari.
+  - Proxy Trust: Enabled `app.set('trust proxy', 1)` to correctly handle `x-forwarded-proto` for HTTPS redirects.
 
 ## 🚀 Deployment Procedures
 
