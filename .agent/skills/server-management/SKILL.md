@@ -36,11 +36,13 @@ The backend runs using PM2. If the site shows "Failed to load stations" or a 503
 - **Missing Dependencies:** If the server crashes with "Module not found", run `npm install` in `/home/radiotrn/api`.
 - **Database Connection:** Use `127.0.0.1` instead of `localhost` in the `.env` file for reliable local database access.
 - **Static Assets:** The `uploads` directory is served relative to the process root. Ensure `Serving uploads from: /home/radiotrn/api/uploads` appears in logs.
-- **iOS/WebKit 403 & Database Loading (Resolved):** 
-  - Strict CORS: iOS/WebKit requires dynamic origin validation when `credentials: true`.
-  - CSP Restrictions: Added `connect-src: "*"` and standard media/blob sources in `helmet` to support cross-origin audio processing.
-  - Security Filters: Added `X-Requested-With: XMLHttpRequest` header to all frontend fetch calls to bypass WAF/ModSecurity filters that often block iOS/Safari.
-  - Proxy Trust: Enabled `app.set('trust proxy', 1)` to correctly handle `x-forwarded-proto` for HTTPS redirects.
+- **WAF Managed Challenges (CAPTCHAs) on iOS (Resolved):**
+  - **Symptoms:** Database loading failures on iOS Safari due to hosting provider's WAF challenges.
+  - **Solution:** 
+    - Implemented `validatedFetch` in `src/lib/api.ts` to detect HTML challenge pages when JSON is expected.
+    - Added `PreflightCheck.tsx` component to provide a "Tap to Verify" button for users to solve the challenge.
+    - Optimized PWA Service Worker (`vite.config.ts`) to strictly cache only `application/json` content, preventing the storage of challenge pages.
+    - Recommended moving the API to `api.radiotrn.com` for better security policy isolation.
 
 ## 🚀 Deployment Procedures
 

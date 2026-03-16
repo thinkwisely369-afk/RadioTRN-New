@@ -138,13 +138,16 @@ export default defineConfig(({ mode }) => ({
             handler: 'NetworkFirst',
             options: {
               cacheName: 'api-cache',
-              networkTimeoutSeconds: 10,
+              networkTimeoutSeconds: 5, // Reduced timeout for better UX on slow WAF challenges
               expiration: {
                 maxEntries: 50,
                 maxAgeSeconds: 60 * 5 // 5 minutes
               },
               cacheableResponse: {
-                statuses: [0, 200]
+                statuses: [200], // Strictly cache only 200 OK
+                headers: {
+                  'Content-Type': 'application/json' // High Importance: Only cache JSON, never HTML challenges
+                }
               }
             }
           }

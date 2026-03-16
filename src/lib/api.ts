@@ -4,12 +4,48 @@ const BASE_URL = API_URL.replace('/api', '');
 // Default fetch options for better compatibility
 const fetchOptions = {
   headers: {
-    'Accept': 'application/json',
+    'Accept': 'application/json, text/html',
     'X-Requested-With': 'XMLHttpRequest' // Helps bypass some CSRF/WAF filters
   }
 };
 
-export { API_URL, BASE_URL };
+/**
+ * Custom fetch wrapper to detect WAF/Cloudflare managed challenges
+ */
+async function validatedFetch(url: string, options: RequestInit = {}): Promise<Response> {
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      ...fetchOptions.headers,
+      ...options.headers,
+    }
+  });
+
+  const contentType = response.headers.get('content-type');
+
+  // If we expect JSON but get HTML, it's likely a WAF challenge or a redirect to login
+  if (contentType && contentType.includes('text/html')) {
+    const text = await response.clone().text();
+
+    // Check for common WAF challenge signatures
+    const isChallenge =
+      text.includes('cf-challenge') ||
+      text.includes('cloudflare') ||
+      text.includes('managed challenge') ||
+      text.includes('captcha') ||
+      text.includes('challenge-platform');
+
+    if (isChallenge) {
+      console.error('WAF Challenge detected at:', url);
+      // We can't easily "solve" it programmatically, but we can notify the app
+      throw new Error('WAF_CHALLENGE_DETECTED');
+    }
+  }
+
+  return response;
+}
+
+export { API_URL, BASE_URL, validatedFetch };
 
 // Types
 export interface Station {
@@ -39,7 +75,7 @@ export interface LoginResponse {
 // Auth API
 export const authAPI = {
   async login(username: string, password: string): Promise<LoginResponse> {
-    const response = await fetch(`${API_URL}/auth/login`, {
+    const response = await validatedFetch(`${API_URL}/auth/login`, {
       method: 'POST',
       headers: {
         ...fetchOptions.headers,
@@ -57,7 +93,7 @@ export const authAPI = {
   },
 
   async register(username: string, email: string, password: string, role: string = 'user') {
-    const response = await fetch(`${API_URL}/auth/register`, {
+    const response = await validatedFetch(`${API_URL}/auth/register`, {
       method: 'POST',
       headers: {
         ...fetchOptions.headers,
@@ -78,7 +114,7 @@ export const authAPI = {
 // Stations API
 export const stationsAPI = {
   async getAll(): Promise<Station[]> {
-    const response = await fetch(`${API_URL}/stations`, {
+    const response = await validatedFetch(`${API_URL}/stations`, {
       ...fetchOptions
     });
     if (!response.ok) throw new Error('Failed to fetch stations');
@@ -86,7 +122,7 @@ export const stationsAPI = {
   },
 
   async getAllAdmin(token: string): Promise<Station[]> {
-    const response = await fetch(`${API_URL}/stations/all`, {
+    const response = await validatedFetch(`${API_URL}/stations/all`, {
       headers: {
         ...fetchOptions.headers,
         'Authorization': `Bearer ${token}`
@@ -97,7 +133,7 @@ export const stationsAPI = {
   },
 
   async getById(id: number): Promise<Station> {
-    const response = await fetch(`${API_URL}/stations/${id}`, {
+    const response = await validatedFetch(`${API_URL}/stations/${id}`, {
       ...fetchOptions
     });
     if (!response.ok) throw new Error('Station not found');
@@ -105,7 +141,7 @@ export const stationsAPI = {
   },
 
   async getBySlug(slug: string): Promise<Station> {
-    const response = await fetch(`${API_URL}/stations/slug/${slug}`, {
+    const response = await validatedFetch(`${API_URL}/stations/slug/${slug}`, {
       ...fetchOptions
     });
     if (!response.ok) throw new Error('Station not found');
@@ -113,7 +149,7 @@ export const stationsAPI = {
   },
 
   async create(token: string, station: Omit<Station, 'id' | 'isActive'>) {
-    const response = await fetch(`${API_URL}/stations`, {
+    const response = await validatedFetch(`${API_URL}/stations`, {
       method: 'POST',
       headers: {
         ...fetchOptions.headers,
@@ -132,7 +168,7 @@ export const stationsAPI = {
   },
 
   async update(token: string, id: number, station: Partial<Station>) {
-    const response = await fetch(`${API_URL}/stations/${id}`, {
+    const response = await validatedFetch(`${API_URL}/stations/${id}`, {
       method: 'PUT',
       headers: {
         ...fetchOptions.headers,
@@ -151,7 +187,7 @@ export const stationsAPI = {
   },
 
   async delete(token: string, id: number) {
-    const response = await fetch(`${API_URL}/stations/${id}`, {
+    const response = await validatedFetch(`${API_URL}/stations/${id}`, {
       method: 'DELETE',
       headers: {
         ...fetchOptions.headers,

@@ -6,25 +6,34 @@ import Footer from "@/components/Footer";
 import StationCard from "@/components/StationCard";
 import InstallPrompt from "@/components/InstallPrompt";
 import { stationsAPI, Station } from "@/lib/api";
+import PreflightCheck from "@/components/PreflightCheck";
 
 const Index = () => {
   const [stations, setStations] = useState<Station[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isWafChallenge, setIsWafChallenge] = useState(false);
 
-  useEffect(() => {
-    const loadStations = async () => {
-      try {
-        const data = await stationsAPI.getAll();
-        setStations(data);
-      } catch (err) {
+  const loadStations = async () => {
+    setLoading(true);
+    setIsWafChallenge(false);
+    setError(null);
+    try {
+      const data = await stationsAPI.getAll();
+      setStations(data);
+    } catch (err: any) {
+      if (err.message === 'WAF_CHALLENGE_DETECTED') {
+        setIsWafChallenge(true);
+      } else {
         setError('Failed to load stations');
         console.error('Error loading stations:', err);
-      } finally {
-        setLoading(false);
       }
-    };
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     loadStations();
   }, []);
 
@@ -87,6 +96,10 @@ const Index = () => {
               {loading ? (
                 <div className="col-span-full flex items-center justify-center py-12">
                   <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                </div>
+              ) : isWafChallenge ? (
+                <div className="col-span-full">
+                  <PreflightCheck onSuccess={loadStations} />
                 </div>
               ) : error ? (
                 <div className="col-span-full text-center py-12 text-red-500">

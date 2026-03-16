@@ -8,40 +8,48 @@ import StationCard from "@/components/StationCard";
 import { stationsAPI, Station } from "@/lib/api";
 import { useAudio } from "@/contexts/AudioContext";
 import { toast } from "@/hooks/use-toast";
+import PreflightCheck from "@/components/PreflightCheck";
 
 const StationPage = () => {
   const { id, slug } = useParams<{ id?: string; slug?: string }>();
   const [station, setStation] = useState<Station | null>(null);
   const [otherStations, setOtherStations] = useState<Station[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isWafChallenge, setIsWafChallenge] = useState(false);
   const { currentStation, isPlaying, playStation, togglePlay } = useAudio();
 
-  useEffect(() => {
-    const loadStation = async () => {
-      try {
-        const identifier = id || slug;
-        if (!identifier) return;
+  const loadStation = async () => {
+    setLoading(true);
+    setIsWafChallenge(false);
+    try {
+      const identifier = id || slug;
+      if (!identifier) return;
 
-        // Fetch current station - check if it's a number (ID) or string (slug)
-        let stationData: Station;
-        if (!isNaN(Number(identifier))) {
-          stationData = await stationsAPI.getById(parseInt(identifier));
-        } else {
-          stationData = await stationsAPI.getBySlug(identifier);
-        }
-        setStation(stationData);
+      // Fetch current station - check if it's a number (ID) or string (slug)
+      let stationData: Station;
+      if (!isNaN(Number(identifier))) {
+        stationData = await stationsAPI.getById(parseInt(identifier));
+      } else {
+        stationData = await stationsAPI.getBySlug(identifier);
+      }
+      setStation(stationData);
 
-        // Fetch other stations
-        const allStations = await stationsAPI.getAll();
-        setOtherStations(allStations.filter(s => s.id !== stationData.id).slice(0, 4));
-      } catch (error) {
+      // Fetch other stations
+      const allStations = await stationsAPI.getAll();
+      setOtherStations(allStations.filter(s => s.id !== stationData.id).slice(0, 4));
+    } catch (error: any) {
+      if (error.message === 'WAF_CHALLENGE_DETECTED') {
+        setIsWafChallenge(true);
+      } else {
         console.error('Error loading station:', error);
         setStation(null);
-      } finally {
-        setLoading(false);
       }
-    };
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     loadStation();
   }, [id, slug]);
 
@@ -55,12 +63,18 @@ const StationPage = () => {
 
   if (!station) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-foreground mb-4">Station not found</h1>
-          <Link to="/" className="text-primary hover:underline">
-            Go back home
-          </Link>
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="text-center w-full max-w-md">
+          {isWafChallenge ? (
+            <PreflightCheck onSuccess={loadStation} />
+          ) : (
+            <>
+              <h1 className="text-2xl font-bold text-foreground mb-4">Station not found</h1>
+              <Link to="/" className="text-primary hover:underline">
+                Go back home
+              </Link>
+            </>
+          )}
         </div>
       </div>
     );
